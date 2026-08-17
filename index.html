@@ -190,7 +190,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCDrPTk42gRD9kzjocMr3hNJd4BORRQ8mc",
@@ -246,18 +246,73 @@
         const toastMessage = document.getElementById('toast-message');
         let toastTimeout;
 
-        window.startGame = function() {
+        // 🌟 更新後的核對登入函數
+        window.startGame = async function() {
             const inputVal = document.getElementById('team-input').value.trim();
+            const errorElement = document.getElementById('login-error');
+            const loginBtn = document.querySelector('button[onclick="startGame()"]');
+            
             if (!inputVal) {
-                document.getElementById('login-error').classList.remove('hidden');
+                errorElement.textContent = "⚠️ 必須填寫小隊名稱才能進入！";
+                errorElement.classList.remove('hidden', 'text-[#8c8270]');
+                errorElement.classList.add('text-blood');
                 return;
             }
             
-            teamName = inputVal;
-            document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
-            document.getElementById('startup-modal').classList.add('hidden');
-            triggerHaptic('medium');
-            lucide.createIcons();
+            try {
+                // 顯示讀取中動畫與文字 ⏳
+                errorElement.textContent = "🔄 正在連線總部資料庫進行身分核對...";
+                errorElement.classList.remove('hidden', 'text-blood');
+                errorElement.classList.add('text-[#8c8270]');
+                loginBtn.disabled = true;
+                loginBtn.style.opacity = '0.7';
+
+                const snap = await getDoc(docRef);
+                if (!snap.exists()) {
+                    throw "找不到總部資料庫！";
+                }
+
+                const data = snap.data();
+                // 撈取資料庫中的隊伍陣列 (依照你的資料庫結構調整)
+                const scoresList = data.scores || data.teams || data.pendingRequests || [];
+                
+                // 比對輸入名稱是否存在於計分系統中 🔍
+                const isValidTeam = scoresList.some(item => {
+                    if (typeof item === 'string') return item === inputVal;
+                    return (item.team || item.name || '') === inputVal;
+                });
+
+                // 若不在名單內，就擋下來！🛑
+                if (!isValidTeam && scoresList.length > 0) {
+                    errorElement.textContent = "⚠️ 查無此組織代號，請輸入正確的計分系統名稱！";
+                    errorElement.classList.remove('text-[#8c8270]');
+                    errorElement.classList.add('text-blood');
+                    errorElement.classList.remove('hidden');
+                    loginBtn.disabled = false;
+                    loginBtn.style.opacity = '1';
+                    return;
+                }
+
+                // 🎉 登入成功！
+                errorElement.classList.add('hidden');
+                teamName = inputVal;
+                document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
+                document.getElementById('startup-modal').classList.add('hidden');
+                triggerHaptic('medium');
+                lucide.createIcons();
+
+            } catch (err) {
+                console.error("驗證失敗:", err);
+                // 容錯機制：如果資料庫抓不到或有錯誤，還是可以進去（避免玩家卡死進不去遊戲）
+                teamName = inputVal;
+                document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
+                document.getElementById('startup-modal').classList.add('hidden');
+                triggerHaptic('medium');
+                lucide.createIcons();
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.style.opacity = '1';
+            }
         }
 
         function renderCards() {
@@ -408,22 +463,19 @@
                     const now = new Date();
                     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
                     
-                    // 寫入「待審核清單 (pendingRequests)」
                     currentPending.push({
-                        id: Date.now().toString() + Math.floor(Math.random() * 1000), // 產生隨機唯一 ID
+                        id: Date.now().toString() + Math.floor(Math.random() * 1000),
                         team: teamName,
                         score: finalScore,
                         reason: '白樺山莊殺人事件',
                         time: timeStr
                     });
 
-                    // 同步寫入更新
                     transaction.update(docRef, {
                         pendingRequests: currentPending
                     });
                 });
 
-                // ✅ 寫入成功，更新右上角狀態列為等待審核
                 statusLabel.innerHTML = '已送出，等待總部核准...';
                 sysStatusText.classList.remove('text-blood');
                 sysStatusText.classList.add('text-yellow-500');
@@ -507,7 +559,6 @@
                 resultBanner.classList.remove('opacity-0', 'scale-95');
                 resultBanner.classList.add('opacity-100', 'scale-100');
                 
-                // 🚀 自動在背景傳送至待審核區
                 window.submitScoreToBoard(score);
             }, 10);
 
