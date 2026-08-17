@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>白樺山莊殺人事件 - 搜查本部</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- 引入偵探風格字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Klee+One:wght@400;600&family=Noto+Serif+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['"Noto Serif TC"', 'serif'],
+                        mono: ['"Courier Prime"', 'monospace'],
+                        hand: ['"Klee One"', '"BiauKai"', 'cursive'],
+                    },
+                    colors: {
+                        paper: '#f4ece1',
+                        ink: '#2c2a25',
+                        blood: '#8a1c1c',
+                    },
+                    backgroundImage: {
+                        'corkboard': 'radial-gradient(#4a3f35 1px, transparent 1px)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #2a241d;
+            background-size: 20px 20px;
+            color: #d6cfc1;
+            font-family: 'Noto Serif TC', serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #5c5446; border-radius: 4px; }
+
+        .pin {
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle at 30% 30%, #a3a3a3, #333);
+            border-radius: 50%;
+            box-shadow: 1px 2px 3px rgba(0,0,0,0.5);
+            z-index: 20;
+        }
+
+        .stamp-effect {
+            border: 4px solid #8a1c1c;
+            color: #8a1c1c;
+            font-weight: 900;
+            text-transform: uppercase;
+            border-radius: 8px;
+            padding: 8px 16px;
+            transform: rotate(-10deg);
+            mask-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+            -webkit-mask-image: url('https://www.transparenttextures.com/patterns/grunge-wall.png');
+        }
+        
+        .typewriter { font-family: 'Courier Prime', monospace; }
+
+        .notepad-lines {
+            background-image: linear-gradient(#ccc 1px, transparent 1px);
+            background-size: 100% 28px;
+            line-height: 28px;
+        }
+    </style>
+</head>
+<body class="bg-corkboard relative min-h-screen flex flex-col items-center overflow-x-hidden selection:bg-blood/30 p-6 pb-24">
+    
+    <div id="startup-modal" class="fixed inset-0 bg-black/95 z-[100] flex flex-col justify-center items-center p-4 backdrop-blur-md">
+        <div class="bg-paper p-8 rounded-sm shadow-2xl max-w-sm w-full border-4 border-[#3c3429] text-center relative">
+            <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-blood text-paper px-4 py-1 text-xs font-bold tracking-widest rounded-sm shadow-md">
+                TOP SECRET
+            </div>
+            <i data-lucide="shield-alert" class="w-14 h-14 mx-auto mb-4 text-blood"></i>
+            <h2 class="text-2xl font-black mb-2 text-ink font-serif tracking-widest">白樺山莊殺人事件</h2>
+            <p class="text-sm font-bold text-[#8c8270] mb-8">進入搜查本部前，請輸入登入身分</p>
+
+            <div class="text-left mb-6">
+                <label class="block text-xs font-bold text-ink mb-2 tracking-widest"><i data-lucide="users" class="w-3 h-3 inline"></i> 輸入所屬小隊：</label>
+                <input type="text" id="team-input" placeholder="例如：第一小隊" class="w-full p-3 bg-[#eae3d2] border-2 border-[#b5aa96] rounded-sm text-ink font-bold text-lg outline-none focus:border-blood transition-colors shadow-inner text-center">
+                <p id="login-error" class="text-blood text-xs font-bold mt-2 hidden text-center">⚠️ 必須填寫小隊名稱才能進入！</p>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-[#2c2a25] hover:bg-blood text-paper font-bold py-3.5 rounded-sm shadow-lg transition-all active:scale-95 tracking-widest flex items-center justify-center">
+                <i data-lucide="fingerprint" class="w-5 h-5 mr-2 opacity-70"></i> 授權登入並開始調查
+            </button>
+        </div>
+    </div>
+
+    <!-- 背景暗角遮罩 -->
+    <div class="fixed inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(0,0,0,0.9)] z-0"></div>
+
+    <div class="z-10 w-full max-w-md flex flex-col items-center relative">
+        
+        <div class="w-full flex justify-between items-center mb-4">
+            <span id="current-team-display" class="bg-blood text-paper px-3 py-1 text-xs font-bold tracking-widest rounded-sm shadow-md">
+                尚未登入
+            </span>
+        </div>
+
+        <div class="w-full bg-[#3c3429] rounded-sm p-5 border-l-4 border-blood shadow-[0_8px_20px_rgba(0,0,0,0.6)] mb-6 relative">
+            <h3 class="font-black text-paper mb-3 flex items-center text-lg tracking-widest border-b border-[#5c5446] pb-2 font-serif">
+                <i data-lucide="file-search" class="w-5 h-5 mr-2 text-blood"></i> 搜查一課・指導手冊
+            </h3>
+            <ul class="list-disc list-outside ml-5 space-y-2 text-[15px] font-hand text-[#b5aa96] leading-relaxed mt-3 tracking-wide">
+                <li>請結合【案卷檔案】，選取嫌疑人並進行<strong class="text-paper border-b border-blood font-bold">「盤問」</strong>。</li>
+                <li>偵訊資源有限，本次調查僅有 <strong class="text-blood text-lg font-bold">4 次</strong> 盤問機會。</li>
+                <li><span class="text-[#e2c792]">【重要警告】嫌疑人或證人中存在偽證！這 4 次口供中，必有 1 次為謊言。</span></li>
+                <li><span class="font-bold underline decoration-blood underline-offset-4 text-paper">逮捕令僅能核發 1 次。抓錯人將導致真兇逃逸，案件永遠懸案。</span></li>
+            </ul>
+        </div>
+
+        <!-- 狀態與剩餘次數顯示 -->
+        <div class="w-full flex justify-between items-end mb-6 px-2">
+            <div>
+                <p class="text-[#8c8270] text-xs font-bold mb-2 tracking-widest typewriter">REMAINING INQUIRIES</p>
+                <div id="questions-dots" class="flex space-x-2"></div>
+            </div>
+            <div class="text-right">
+                <p class="text-[#8c8270] text-xs font-bold mb-1 tracking-widest typewriter">STATUS</p>
+                <span id="system-status-text" class="text-sm font-bold flex items-center justify-end text-paper transition-colors">
+                    <i data-lucide="radio" class="w-4 h-4 mr-1 animate-pulse text-blood"></i> <span id="status-label">搜查本部連線中</span>
+                </span>
+            </div>
+        </div>
+
+        <div id="result-banner" class="hidden w-full bg-paper p-8 rounded-sm mb-6 text-center shadow-2xl relative overflow-hidden border-2 transition-all duration-700 opacity-0 scale-95">
+            <div class="absolute -top-4 -right-4 w-16 h-16 bg-blood transform rotate-45 flex items-end justify-center pb-1 shadow-md">
+                <i data-lucide="lock" class="w-4 h-4 text-paper"></i>
+            </div>
+            <div class="relative z-10 text-ink" id="result-content"></div>
+        </div>
+
+        <div class="w-full mb-8 relative">
+            <div class="flex items-center justify-center mb-5 opacity-70">
+                <div class="h-[1px] w-12 bg-[#8c8270]"></div>
+                <h3 class="mx-4 text-center text-[#8c8270] font-black tracking-[0.3em] text-xs uppercase typewriter">SUSPECT FILES</h3>
+                <div class="h-[1px] w-12 bg-[#8c8270]"></div>
+            </div>
+            <div id="suspects-grid" class="grid grid-cols-3 gap-3 justify-center items-center"></div>
+        </div>
+
+        <div class="w-full flex space-x-3 mb-8">
+            <button id="btn-ask" class="flex-1 h-16 bg-[#3c3429] hover:bg-[#4a3f35] border border-[#5c5446] rounded-sm flex flex-col items-center justify-center text-paper font-bold tracking-widest shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed">
+                <i data-lucide="search" class="w-5 h-5 mb-1 text-[#b5aa96]"></i>
+                <span class="text-sm">進行盤問</span>
+            </button>
+            <button id="btn-accuse" class="flex-1 h-16 bg-[#2c1212] hover:bg-blood border border-blood rounded-sm flex flex-col items-center justify-center text-[#f4ece1] font-bold tracking-widest shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-0 h-0 border-t-[20px] border-l-[20px] border-t-blood border-l-transparent"></div>
+                <i data-lucide="gavel" class="w-5 h-5 mb-1"></i>
+                <span class="text-sm">發布逮捕令</span>
+            </button>
+        </div>
+
+        <div class="w-full bg-paper rounded-sm p-4 shadow-xl border-l-[6px] border-[#3c3429] relative">
+            <div class="absolute top-0 left-6 w-[1px] h-full bg-red-300/50"></div> 
+            <h3 class="font-black text-ink mb-3 flex items-center text-sm tracking-widest uppercase border-b-2 border-ink pb-2">
+                <i data-lucide="book-open" class="w-4 h-4 mr-2"></i> Interrogation Log
+            </h3>
+            <div id="history-container" class="space-y-1 max-h-52 overflow-y-auto pr-2 custom-scrollbar typewriter text-ink notepad-lines pt-1">
+                <div class="flex flex-col items-center justify-center py-6 opacity-40 empty-state">
+                    <i data-lucide="pen-tool" class="w-6 h-6 mb-2"></i>
+                    <p class="text-xs tracking-widest font-sans">尚未開始盤問...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自訂推播通知列 -->
+    <div id="custom-toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 translate-y-full opacity-0 bg-paper text-ink px-6 py-3 shadow-[0_5px_15px_rgba(0,0,0,0.5)] border-l-4 border-blood flex items-center transition-all duration-300 z-50">
+        <i data-lucide="alert-circle" class="w-5 h-5 mr-3 text-blood"></i>
+        <span id="toast-message" class="text-sm font-bold tracking-wider typewriter"></span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDrPTk42gRD9kzjocMr3hNJd4BORRQ8mc",
+            authDomain: "camping-point-calculation1.firebaseapp.com",
+            projectId: "camping-point-calculation1",
+            storageBucket: "camping-point-calculation1.firebasestorage.app",
+            messagingSenderId: "421598951475",
+            appId: "1:421598951475:web:106ee0d65a92dd55484b46"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const docRef = doc(db, 'conanGame', 'scoreboard');
+
+        function triggerHaptic(type = 'light') {
+            if ('vibrate' in navigator) {
+                try {
+                    if (type === 'light') navigator.vibrate(15);
+                    else if (type === 'medium') navigator.vibrate(35);
+                    else if (type === 'heavy') navigator.vibrate([40, 30, 40]);
+                } catch(e) {}
+            }
+        }
+
+        // --- 遊戲資料與狀態 ---
+        let teamName = ""; 
+        const suspects = [
+            { id: 1, name: '山本翔太', role: '記者' },
+            { id: 2, name: '佐藤美咲', role: '律師' },
+            { id: 3, name: '高橋悠斗', role: '攝影師' },
+            { id: 4, name: '伊藤彩香', role: '醫師' },
+            { id: 5, name: '中村大輝', role: '魔術師' },
+            { id: 6, name: '渡邊真希', role: '鑑定師' },
+            { id: 7, name: '小林恒一', role: '管理員' }
+        ];
+        
+        const KILLER_ID = 2; 
+        let lieUsed = false;
+        let questionsLeft = 4;
+        let historyLogs = [];
+        let selectedCards = [];
+        let gameStatus = 'playing';
+
+        const suspectsGrid = document.getElementById('suspects-grid');
+        const questionsDots = document.getElementById('questions-dots');
+        const btnAsk = document.getElementById('btn-ask');
+        const btnAccuse = document.getElementById('btn-accuse');
+        const historyContainer = document.getElementById('history-container');
+        const resultBanner = document.getElementById('result-banner');
+        const resultContent = document.getElementById('result-content');
+        const sysStatusText = document.getElementById('system-status-text');
+        const statusLabel = document.getElementById('status-label');
+        const customToast = document.getElementById('custom-toast');
+        const toastMessage = document.getElementById('toast-message');
+        let toastTimeout;
+
+        window.startGame = function() {
+            const inputVal = document.getElementById('team-input').value.trim();
+            if (!inputVal) {
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+            
+            teamName = inputVal;
+            document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
+            document.getElementById('startup-modal').classList.add('hidden');
+            triggerHaptic('medium');
+            lucide.createIcons();
+        }
+
+        function renderCards() {
+            suspectsGrid.innerHTML = suspects.map(suspect => {
+                const isSelected = selectedCards.includes(suspect.id);
+                const isCenterRow2 = suspect.id === 7 ? 'col-start-2' : '';
+                
+                const cardBgClass = isSelected 
+                    ? 'bg-[#eae3d2] shadow-lg border-blood border-2 transform rotate-1 scale-105 z-10' 
+                    : 'bg-[#d6cfc1] border-[#b5aa96] border border-b-2 shadow-sm hover:-translate-y-1 hover:shadow-md';
+                const textNameClass = isSelected ? 'text-blood' : 'text-ink';
+                const stampHtml = isSelected ? `<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-20"><i data-lucide="target" class="w-12 h-12 text-blood"></i></div>` : '';
+
+                return `
+                    <button data-id="${suspect.id}" class="suspect-card relative h-28 rounded-sm p-2 flex flex-col items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-50 ${isCenterRow2} ${cardBgClass}">
+                        <div class="pin"></div>
+                        ${stampHtml}
+                        <div class="relative z-10 flex flex-col items-center w-full">
+                            <span class="text-[10px] font-bold mb-1 tracking-widest text-[#8c8270] typewriter w-full text-left border-b border-[#b5aa96]/50 pb-0.5">#0${suspect.id}</span>
+                            <span class="text-base font-black tracking-wider mt-2 ${textNameClass}">${suspect.name}</span>
+                            <span class="text-xs opacity-70 mt-1 font-sans text-ink">${suspect.role}</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.suspect-card').forEach(btn => {
+                btn.disabled = gameStatus !== 'playing';
+                btn.addEventListener('click', (e) => {
+                    if (gameStatus !== 'playing') return;
+                    const id = parseInt(e.currentTarget.dataset.id);
+                    toggleCard(id);
+                });
+            });
+        }
+
+        function updateDots() {
+            let html = '';
+            for (let i = 0; i < 4; i++) {
+                if (i < questionsLeft) {
+                    html += `<div class="w-3 h-3 rounded-sm bg-blood transform rotate-45 shadow-sm"></div>`;
+                } else {
+                    html += `<div class="w-3 h-3 rounded-sm bg-[#5c5446] transform rotate-45 opacity-30"></div>`;
+                }
+            }
+            questionsDots.innerHTML = html;
+        }
+
+        function updateButtons() {
+            const canAsk = selectedCards.length > 0 && questionsLeft > 0 && gameStatus === 'playing';
+            const canAccuse = selectedCards.length === 1 && gameStatus === 'playing';
+
+            btnAsk.disabled = !canAsk;
+            btnAccuse.disabled = !canAccuse;
+        }
+
+        function renderLogs() {
+            if (historyLogs.length === 0) return;
+            historyContainer.innerHTML = historyLogs.map(item => {
+                const answerColor = item.answer === '有兇手！' ? 'text-blood font-bold' : 'text-ink font-bold';
+                return `
+                    <div class="flex flex-col pl-6 pr-2 py-1 border-b border-[#ccc]/30 hover:bg-black/5 transition-colors">
+                        <div class="flex items-start mt-1">
+                            <span class="text-[10px] font-black text-blood bg-blood/10 px-1 py-0.5 rounded-sm mr-2 mt-0.5 border border-blood/20 shadow-sm leading-none tracking-wider">NO.${item.order}</span>
+                            <span class="text-xs opacity-70 leading-relaxed mt-0.5">Q: [ ${item.askedNames.join(', ')} ]</span>
+                        </div>
+                        <div class="flex items-center mt-1 mb-1">
+                            <span class="text-xs mr-2 opacity-60">A:</span>
+                            <span class="text-sm tracking-wide ${answerColor}">${item.answer}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleCard(id) {
+            triggerHaptic('light');
+            if (selectedCards.includes(id)) {
+                selectedCards = selectedCards.filter(cardId => cardId !== id);
+            } else {
+                selectedCards.push(id);
+            }
+            updateAllUI();
+        }
+
+        function showMessage(msg) {
+            clearTimeout(toastTimeout);
+            toastMessage.textContent = msg;
+            customToast.classList.remove('translate-y-full', 'opacity-0');
+            
+            toastTimeout = setTimeout(() => {
+                customToast.classList.add('translate-y-full', 'opacity-0');
+            }, 3000);
+        }
+
+        function handleAsk() {
+            if (selectedCards.length === 0 || questionsLeft <= 0 || gameStatus !== 'playing') return;
+            triggerHaptic('medium');
+
+            const isKillerInSelection = selectedCards.includes(KILLER_ID);
+            let finalAnswer = isKillerInSelection;
+            let didILie = false;
+
+            if (!lieUsed) {
+                const willLie = Math.random() < 0.35;
+                const forceLie = questionsLeft <= 2;
+                if (willLie || forceLie) {
+                    finalAnswer = !isKillerInSelection;
+                    didILie = true;
+                    lieUsed = true;
+                }
+            }
+
+            const askedNames = selectedCards.map(id => suspects.find(s => s.id === id)?.name || id);
+
+            historyLogs.unshift({
+                order: historyLogs.length + 1,
+                askedNames: askedNames,
+                answer: finalAnswer ? "有兇手！" : "沒有兇手！",
+                isLie: didILie
+            });
+
+            questionsLeft--;
+            selectedCards = [];
+            updateAllUI();
+        }
+
+        function handleAccuse() {
+            triggerHaptic('heavy');
+            if (selectedCards.length !== 1) {
+                showMessage("申請逮捕令時，只能指名【一位】嫌疑人！");
+                return;
+            }
+            gameStatus = selectedCards[0] === KILLER_ID ? 'won' : 'lost';
+            updateAllUI();
+            showResult();
+        }
+
+        window.submitScoreToBoard = async function(finalScore) {
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const sfDoc = await transaction.get(docRef);
+                    if (!sfDoc.exists()) throw "找不到總部資料庫！";
+
+                    const data = sfDoc.data();
+                    let currentPending = data.pendingRequests || [];
+
+                    const now = new Date();
+                    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                    
+                    // 寫入「待審核清單 (pendingRequests)」
+                    currentPending.push({
+                        id: Date.now().toString() + Math.floor(Math.random() * 1000), // 產生隨機唯一 ID
+                        team: teamName,
+                        score: finalScore,
+                        reason: '白樺山莊殺人事件',
+                        time: timeStr
+                    });
+
+                    // 同步寫入更新
+                    transaction.update(docRef, {
+                        pendingRequests: currentPending
+                    });
+                });
+
+                // ✅ 寫入成功，更新右上角狀態列為等待審核
+                statusLabel.innerHTML = '已送出，等待總部核准...';
+                sysStatusText.classList.remove('text-blood');
+                sysStatusText.classList.add('text-yellow-500');
+
+                setTimeout(() => {
+                    alert('✅ 成績已送出！\n\n分數（+' + finalScore + ' 分）已經在背景傳送至總部，等待指揮官審核同意後即可生效！您可以準備接待下一組囉。');
+                }, 800);
+
+            } catch (error) {
+                console.error("傳送失敗:", error);
+                alert('❌ 傳送失敗，請確保網路暢通。\n錯誤訊息: ' + error);
+                statusLabel.innerHTML = '上傳失敗';
+            }
+        }
+
+        function showResult() {
+            sysStatusText.className = `text-sm font-bold flex items-center justify-end ${gameStatus === 'won' ? 'text-green-500' : 'text-blood'}`;
+            statusLabel.textContent = '案卷已封存 (LOCKED)';
+
+            resultBanner.className = `w-full bg-paper p-6 sm:p-8 rounded-sm mb-6 text-center shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative border-4 ${gameStatus === 'won' ? 'border-green-800' : 'border-blood'} transition-all duration-700 block`;
+            
+            const truthReport = `
+                <div class="mt-5 text-left bg-black/5 p-4 rounded border border-[#b5aa96] shadow-inner custom-scrollbar overflow-y-auto max-h-[45vh]">
+                    <h4 class="font-black text-blood mb-2 border-b border-blood/30 pb-2 flex items-center text-base">
+                        <i data-lucide="file-check-2" class="w-5 h-5 mr-1"></i> 警方機密結案報告
+                    </h4>
+                    <p class="text-sm font-bold mb-1 mt-3">■ 真正兇手：<span class="text-ink text-base">02 佐藤美咲 (律師)</span></p>
+                    <p class="text-sm font-bold mt-4 mb-1 text-ink">■ 犯案動機：</p>
+                    <p class="text-[13px] text-ink/90 leading-relaxed font-sans text-justify bg-[#f4ece1]/50 p-2 rounded">
+                        五年前，神崎修一的工程事故造成佐藤美咲父親死亡。神崎利用權勢掩蓋真相，佐藤為討回公道潛入其法律團隊。晚宴前，神崎卻表示「公開真相也改變不了什麼」，毫無悔意，導致佐藤情緒失控痛下殺手。
+                    </p>
+                    <p class="text-sm font-bold mt-4 mb-1 text-ink">■ 手法與推理還原：</p>
+                    <ul class="text-[13px] text-ink/90 list-disc list-outside ml-4 space-y-2 font-sans text-justify">
+                        <li><strong class="text-blood font-mono text-sm">20:15</strong> 佐藤與神崎單獨會面。</li>
+                        <li><strong class="text-blood font-mono text-sm">20:16</strong> 神崎撥打電話給佐藤，佐藤刻意靜音未接聽。</li>
+                        <li><strong class="text-blood font-mono text-sm">20:17</strong> 佐藤刺殺死者，死者臨終前寫下絕筆紙條<strong class="text-ink underline decoration-blood">「不是他……是她」</strong>。</li>
+                        <li><strong class="text-blood font-mono text-sm">20:20</strong> 佐藤趁管理員去檢查電源時製造停電，企圖讓警方誤判死亡時間。</li>
+                    </ul>
+                </div>
+            `;
+
+            const asksUsed = 4 - questionsLeft;
+            let score = 2000;
+            let scoreLabel = "📜 結案補償";
+            
+            if (gameStatus === 'won') {
+                scoreLabel = "🎖️ 破案獎勵";
+                if (asksUsed === 0) score = 7000;
+                else if (asksUsed === 1) score = 5000;
+                else if (asksUsed === 2) score = 4000;
+                else if (asksUsed === 3) score = 3500;
+                else if (asksUsed === 4) score = 3000;
+            }
+
+            if (gameStatus === 'won') {
+                resultContent.innerHTML = `
+                    <div class="stamp-effect border-green-800 text-green-800 text-3xl sm:text-4xl mb-4 mx-auto inline-block bg-transparent rotate-[-5deg]">CASE CLOSED</div>
+                    <h2 class="text-xl sm:text-2xl font-black mb-1 tracking-widest font-serif">破案成功</h2>
+                    <p class="text-sm sm:text-base font-bold mb-2 font-sans text-green-800">你們抓到了真正的兇手！</p>
+                    
+                    <div class="mb-4 py-2 px-4 bg-[#e2c792]/30 border-2 border-[#8c8270] border-dashed rounded shadow-sm inline-block transform -rotate-1">
+                        <span class="text-ink font-black text-xl">${scoreLabel}：<span class="text-blood">+${score}</span> 分</span>
+                        <div class="text-xs font-bold mt-1 text-ink/70 tracking-widest">( 消耗盤問機會：${asksUsed} 次 )</div>
+                    </div>
+                    ${truthReport}
+                `;
+            } else {
+                resultContent.innerHTML = `
+                    <div class="stamp-effect text-3xl sm:text-4xl mb-4 mx-auto inline-block bg-transparent">UNSOLVED</div>
+                    <h2 class="text-xl sm:text-2xl font-black mb-1 tracking-widest font-serif text-blood">抓錯人了</h2>
+                    <p class="text-sm sm:text-base font-bold mb-2 font-sans text-blood">因為錯誤的逮捕令，兇手差點就逃之夭夭...</p>
+
+                    <div class="mb-4 py-2 px-4 bg-black/5 border-2 border-[#b5aa96] border-dashed rounded inline-block">
+                        <span class="text-ink font-bold text-lg">${scoreLabel}：+2000 分</span>
+                    </div>
+                    ${truthReport}
+                `;
+            }
+
+            setTimeout(() => {
+                resultBanner.classList.remove('opacity-0', 'scale-95');
+                resultBanner.classList.add('opacity-100', 'scale-100');
+                
+                // 🚀 自動在背景傳送至待審核區
+                window.submitScoreToBoard(score);
+            }, 10);
+
+            lucide.createIcons();
+        }
+
+        function updateAllUI() {
+            renderCards();
+            updateDots();
+            updateButtons();
+            renderLogs();
+            lucide.createIcons();
+        }
+
+        btnAsk.addEventListener('click', handleAsk);
+        btnAccuse.addEventListener('click', handleAccuse);
+
+        updateAllUI();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
