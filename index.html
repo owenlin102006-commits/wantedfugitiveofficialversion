@@ -273,14 +273,27 @@
                 }
 
                 const data = snap.data();
-                // 撈取資料庫中的隊伍陣列 (依照你的資料庫結構調整)
-                const scoresList = data.scores || data.teams || data.pendingRequests || [];
+                let isValidTeam = false;
                 
-                // 比對輸入名稱是否存在於計分系統中 🔍
-                const isValidTeam = scoresList.some(item => {
-                    if (typeof item === 'string') return item === inputVal;
-                    return (item.team || item.name || '') === inputVal;
-                });
+                // 🔍 絕招 1：如果你的小隊名稱是直接當作資料庫的「欄位名稱 (Object Keys)」
+                // 這是計分板最常見的儲存方式！
+                if (data[inputVal] !== undefined) {
+                    isValidTeam = true;
+                } 
+                // 🔍 絕招 2：如果你的資料是存在陣列 (Array) 裡面，我們擴大各種可能的屬性搜尋範圍！
+                else {
+                    // 把所有可能用來存隊伍的陣列名稱都拉進來找
+                    const checkList = data.scores || data.teams || data.teamList || data.teamsData || [];
+                    
+                    if (Array.isArray(checkList)) {
+                        isValidTeam = checkList.some(item => {
+                            // 如果陣列裡面直接是純文字 (例如 ["第1一小隊", "第二小隊"])
+                            if (typeof item === 'string') return item === inputVal;
+                            // 如果陣列裡面是物件，我們檢查各種常見的屬性名稱！
+                            return (item.team || item.name || item.teamName || item.id || item.title || '') === inputVal;
+                        });
+                    }
+                }
 
                 // 若不在名單內，就擋下來！🛑
                 if (!isValidTeam && scoresList.length > 0) {
