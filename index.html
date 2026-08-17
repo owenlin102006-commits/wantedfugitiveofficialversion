@@ -246,7 +246,7 @@
         const toastMessage = document.getElementById('toast-message');
         let toastTimeout;
 
-        // 🌟 更新後的核對登入函數
+        // 🌟 終極修正版登入函數
         window.startGame = async function() {
             const inputVal = document.getElementById('team-input').value.trim();
             const errorElement = document.getElementById('login-error');
@@ -273,28 +273,45 @@
                 }
 
                 const data = snap.data();
-                let isValidTeam = false;
                 
-                // 🔍 絕招 1：如果你的小隊名稱是直接當作資料庫的「欄位名稱 (Object Keys)」
-                // 這是計分板最常見的儲存方式！
-                if (data[inputVal] !== undefined) {
-                    isValidTeam = true;
-                } 
-                // 🔍 絕招 2：如果你的資料是存在陣列 (Array) 裡面，我們擴大各種可能的屬性搜尋範圍！
-                else {
-                    // 把所有可能用來存隊伍的陣列名稱都拉進來找
-                    const checkList = data.scores || data.teams || data.teamList || data.teamsData || [];
-                    
-                    if (Array.isArray(checkList)) {
-                        isValidTeam = checkList.some(item => {
-                            // 如果陣列裡面直接是純文字 (例如 ["第1一小隊", "第二小隊"])
-                            if (typeof item === 'string') return item === inputVal;
-                            // 如果陣列裡面是物件，我們檢查各種常見的屬性名稱！
-                            return (item.team || item.name || item.teamName || item.id || item.title || '') === inputVal;
-                        });
-                    }
+                // 🕵️‍♂️ 破案啦！根據計分系統，小隊名稱是專屬存在 teamNames 這個陣列裡！
+                const validTeamNames = data.teamNames || [];
+                
+                // 🔍 嚴格比對：輸入的名字必須完完全全等於計分板上的名字
+                const isValidTeam = validTeamNames.includes(inputVal);
+
+                // 若不在名單內，就擋下來！🛑
+                if (!isValidTeam && validTeamNames.length > 0) {
+                    errorElement.textContent = "⚠️ 查無此組織代號，請輸入正確的計分系統名稱！";
+                    errorElement.classList.remove('text-[#8c8270]');
+                    errorElement.classList.add('text-blood');
+                    errorElement.classList.remove('hidden');
+                    loginBtn.disabled = false;
+                    loginBtn.style.opacity = '1';
+                    return;
                 }
 
+                // 🎉 登入成功！
+                errorElement.classList.add('hidden');
+                teamName = inputVal;
+                document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
+                document.getElementById('startup-modal').classList.add('hidden');
+                triggerHaptic('medium');
+                lucide.createIcons();
+
+            } catch (err) {
+                console.error("驗證失敗:", err);
+                // 容錯機制：網路有問題時還是讓玩家能進去玩
+                teamName = inputVal;
+                document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
+                document.getElementById('startup-modal').classList.add('hidden');
+                triggerHaptic('medium');
+                lucide.createIcons();
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.style.opacity = '1';
+            }
+        }
                 // 若不在名單內，就擋下來！🛑
                 if (!isValidTeam && scoresList.length > 0) {
                     errorElement.textContent = "⚠️ 查無此組織代號，請輸入正確的計分系統名稱！";
