@@ -93,7 +93,7 @@
 
             <div class="text-left mb-6">
                 <label class="block text-xs font-bold text-ink mb-2 tracking-widest"><i data-lucide="users" class="w-3 h-3 inline"></i> 請輸入組織代號</label>
-                <input type="text" id="team-input" placeholder="例如：???" class="w-full p-3 bg-[#eae3d2] border-2 border-[#b5aa96] rounded-sm text-ink font-bold text-lg outline-none focus:border-blood transition-colors shadow-inner text-center">
+                <input type="text" id="team-input" placeholder="例如：第一小隊" class="w-full p-3 bg-[#eae3d2] border-2 border-[#b5aa96] rounded-sm text-ink font-bold text-lg outline-none focus:border-blood transition-colors shadow-inner text-center">
                 <p id="login-error" class="text-blood text-xs font-bold mt-2 hidden text-center">⚠️ 必須填寫小隊名稱才能進入！</p>
             </div>
 
@@ -246,7 +246,7 @@
         const toastMessage = document.getElementById('toast-message');
         let toastTimeout;
 
-        // 🌟 終極修正版登入函數
+        // 🌟 完美修正版登入函數 (乾淨無重複)
         window.startGame = async function() {
             const inputVal = document.getElementById('team-input').value.trim();
             const errorElement = document.getElementById('login-error');
@@ -274,7 +274,7 @@
 
                 const data = snap.data();
                 
-                // 🕵️‍♂️ 破案啦！根據計分系統，小隊名稱是專屬存在 teamNames 這個陣列裡！
+                // 🕵️‍♂️ 根據計分系統，小隊名稱是專屬存在 teamNames 這個陣列裡！
                 const validTeamNames = data.teamNames || [];
                 
                 // 🔍 嚴格比對：輸入的名字必須完完全全等於計分板上的名字
@@ -302,38 +302,6 @@
             } catch (err) {
                 console.error("驗證失敗:", err);
                 // 容錯機制：網路有問題時還是讓玩家能進去玩
-                teamName = inputVal;
-                document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
-                document.getElementById('startup-modal').classList.add('hidden');
-                triggerHaptic('medium');
-                lucide.createIcons();
-            } finally {
-                loginBtn.disabled = false;
-                loginBtn.style.opacity = '1';
-            }
-        }
-                // 若不在名單內，就擋下來！🛑
-                if (!isValidTeam && scoresList.length > 0) {
-                    errorElement.textContent = "⚠️ 查無此組織代號，請輸入正確的計分系統名稱！";
-                    errorElement.classList.remove('text-[#8c8270]');
-                    errorElement.classList.add('text-blood');
-                    errorElement.classList.remove('hidden');
-                    loginBtn.disabled = false;
-                    loginBtn.style.opacity = '1';
-                    return;
-                }
-
-                // 🎉 登入成功！
-                errorElement.classList.add('hidden');
-                teamName = inputVal;
-                document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
-                document.getElementById('startup-modal').classList.add('hidden');
-                triggerHaptic('medium');
-                lucide.createIcons();
-
-            } catch (err) {
-                console.error("驗證失敗:", err);
-                // 容錯機制：如果資料庫抓不到或有錯誤，還是可以進去（避免玩家卡死進不去遊戲）
                 teamName = inputVal;
                 document.getElementById('current-team-display').innerHTML = `<i data-lucide="user-check" class="w-3 h-3 inline mr-1"></i> 登入身分：${teamName}`;
                 document.getElementById('startup-modal').classList.add('hidden');
